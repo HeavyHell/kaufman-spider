@@ -1,0 +1,13 @@
+Hi Matt &co., this will be the spider to backup your site. To run, you need to have scrapy installed (http://scrapy.org/download/).
+
+Next you'll need to edit line 29 of kaufspider.py to include a working username/password.
+
+From the project directory, run "scrapy crawl kaufspider -o posts.json -t json". This should just crawl and dump posts into a big json file.
+
+This is very preliminary; obvious TODOs include:
+
+	Fixing date representation
+	Accounting for links and other markup in posts
+	Determining the best output format
+
+Feel free to mess around in whatever way you want, though!

@@ -24,7 +24,10 @@ class KaufspiderSpider(CrawlSpider, InitSpider):
     def login(self, response):
         return FormRequest.from_response(response,
             formname = 'form_login',
-            formdata = {'username': '***REMOVED***', 'password': '***REMOVED***'},
+            
+            #Put a working username/password combination here to use!
+            formdata = {'username': 'user', 'password': 'password'},
+            
             callback=self.check_login_response)
     
     def check_login_response(self, response):
