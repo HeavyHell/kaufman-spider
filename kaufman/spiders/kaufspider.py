@@ -6,6 +6,7 @@ from scrapy.contrib.spiders.init import InitSpider
 from kaufman.items import ForumPost
 from scrapy.selector import HtmlXPathSelector
 import urlparse, re
+from datetime import date, datetime, timedelta
 
 class KaufspiderSpider(CrawlSpider, InitSpider):
     name = 'kaufspider'
@@ -14,7 +15,8 @@ class KaufspiderSpider(CrawlSpider, InitSpider):
     start_urls = ['http://familykaufman.forumotion.com/f1-kaufman-family-discussion']
 
     rules = (
-        Rule(SgmlLinkExtractor(allow=('', )), callback='parse_post', process_links='get_page_links', follow=True),      
+        Rule(SgmlLinkExtractor(allow=('', )), callback='parse_post', process_links='get_topic_links', follow=True),
+        Rule(SgmlLinkExtractor(allow=('', )), callback='parse_post', process_links='get_page_links', follow=True),
         
     )
     
@@ -26,7 +28,7 @@ class KaufspiderSpider(CrawlSpider, InitSpider):
             formname = 'form_login',
             
             #Put a working username/password combination here to use!
-            formdata = {'username': 'user', 'password': 'password'},
+            formdata = {'username': '***REMOVED***', 'password': '***REMOVED***'},
             
             callback=self.check_login_response)
     
@@ -41,30 +43,51 @@ class KaufspiderSpider(CrawlSpider, InitSpider):
     def get_page_links(self, links):
         return [link for link in links if self.is_page_link(link)]
     
+    def get_topic_links(self, links):
+        return [link for link in links if self.is_topic_link(link)]
+    
     def is_page_link(self, link):
         parsed = urlparse.urlparse(link.url)
         querydict=urlparse.parse_qs(parsed.query)
         
-        #only follow only links of the form "t[num]-" or "t[num]p[num]-, and exclude abuse report / topic watch links
+        #only follow links of the form "t[num]p[num]-" and exclude abuse report / topic watch links
         stopwords = ['abuse', 'watch', 'unwatch']
-        return all(x not in querydict for x in stopwords) and re.match('/t\d+p\d+-.*|t\d+-.*', parsed.path)
+        return all(x not in querydict for x in stopwords) and re.match('t\d+-.*', parsed.path)
+    
+    def is_topic_link(self, link):
+        parsed = urlparse.urlparse(link.url)
+        querydict=urlparse.parse_qs(parsed.query)
+        
+        #only follow links of the form "t[num]-" and exclude abuse report / topic watch links
+        stopwords = ['abuse', 'watch', 'unwatch']
+        return all(x not in querydict for x in stopwords) and re.match('/t\d+p\d+-.*', parsed.path)
         
 
     def parse_post(self, response):
+        if not "Log out" in response.body:
+            self.login()
         
         forumposts = []
         hxs = HtmlXPathSelector(response)
-        title = hxs.select('/html/head/title/text()').extract()
+        title = hxs.select('/html/head/title/text()').extract()[0]
         self.log('Followed a link to page: %s' % title)
         posts = hxs.select('//div[@class=\'postbody\']')
         self.log("Found %d posts" % len(posts))
         
         for post in posts:
             forumpost = ForumPost()
-            forumpost['subforum'] = title
+            forumpost['subforum'] = re.sub(' - Page \d+$', '', title)
             forumpost['username'] = post.select('p/a/text()').extract()
-            forumpost['time'] = post.select('p/text()[2]').extract()
+            thistime = post.select('p/text()[2]').extract()[0]
+            forumpost['time'] = self.parse_date(thistime)
             forumpost['text'] = post.select('div[3]/div/text()').extract()
             forumposts.append(forumpost)
         return forumposts
+    
+    def parse_date(self, datestring):
+        datestring = datestring.replace("Today",date.today().isoformat())
+        datestring = datestring.replace("Yesterday",(date.today()-timedelta(days=1)).isoformat())
+        datestring = datestring.replace(" at ",", ")
+        datestring = datestring.strip('on ,')
+        return datetime.strptime(datestring, '%Y-%m-%d, %H:%M')
         
