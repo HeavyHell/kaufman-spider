@@ -11,6 +11,14 @@ BOT_NAME = 'kaufman'
 SPIDER_MODULES = ['kaufman.spiders']
 NEWSPIDER_MODULE = 'kaufman.spiders'
 DOWNLOAD_DELAY = 1.25
+ITEM_PIPELINES = ['kaufman.pipelines.KaufmanPipeline']
+
+DATABASE = {'drivername': 'postgres',
+            'host': 'host',
+            'port': 'post',
+            'username': 'username',
+            'password': 'password',
+            'database': 'scrape'}
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'kaufman (+http://www.yourdomain.com)'
